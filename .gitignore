@@ -2,3 +2,8 @@
 .atl/
 .env
 .venv
+.fastembed_cache/
+
+__pycache__/
+.codegraph/
+datos_medicos_db/
