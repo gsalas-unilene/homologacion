@@ -40,6 +40,7 @@ HEBRAS = {
     "BT": ("SEDA", ("blanco", "trenzado")), "ST": ("SEDA", ("negro", "trenzado")),
     "SA": ("SEDA", ("virgen", "azul")), "SN": ("SEDA", ("virgen", "negro")),
 }
+SIN_AGUJA = ("sin aguja", "multiempaque", "carrete")
 CURVATURES = r"(1/8|1/4|3/8|1/2|5/8)"
 # Needle point keywords, first match wins (specific before generic).
 PUNTAS = [
@@ -52,7 +53,14 @@ PUNTAS = [
     (r"PUNTA ROMA|BLUNT", "roma"),
     (r"CORTANTE|CUTTING", "cortante"),
     (r"REDOND[AO]", "redonda"),
+    (r"CILINDRIC", "cilindrica"),
+    (r"CONICA", "conica"),
 ]
+# Needle abbreviations seen in MINSA names: "1/2 CC 25" (cortante), "1/2 CR 30MM" (redonda), "MR 20" (a code
+# of the aguja dictionary followed by the needle length in mm).
+ABREVIATURAS = {"CC": "cortante", "CT": "cortante", "CR": "redonda"}
+CODIGO_AGUJA = re.compile(r"(?<![A-Z])(TC|MR|MC)(?:[- ]?(\d{2,3}))?(?![A-Z0-9/])")
+ABREVIATURA = re.compile(r"(?<![A-Z])(CC|CT|CR)(?:[- ]?(\d{2,3}))?(?![A-Z0-9/])")
 TAGS = [
     (r"ANTIBACTERIAL", "antibacterial"), (r"INCOLORO", "incoloro"), (r"BARBAD|PUAS", "barbed"),
     (r"VIOLETA", "violeta"), (r"NEGR[AO]", "negro"), (r"AZUL", "azul"), (r"BLANC[AO]", "blanco"),
@@ -127,7 +135,7 @@ def parse_codsut(codsut) -> dict:
     if aguja in d["aguja"]:
         text = norm(d["aguja"][aguja])
         a["curvatura"] = curvatura_de_descripcion(text)
-        a["punta"] = punta_de_texto(text) if a["curvatura"] not in ("sin aguja", "carrete", "multiempaque") else None
+        a["punta"] = punta_de_texto(text) if a["curvatura"] not in SIN_AGUJA else None
     description = d["long_aguja"].get(long_aguja, "")
     match = re.fullmatch(r"(\d+(?:\.\d+)?) mm", description)
     a["long_aguja"] = float(match.group(1)) if match else None
@@ -138,6 +146,22 @@ def parse_codsut(codsut) -> dict:
     a["clase"] = clase if clase in d["clase"] else None
     a["doble"] = a["clase"] in ("B", "M")
     return a
+
+
+def _abreviaturas(a: dict, t: str) -> None:
+    codes = _estructura()["aguja"]
+    match = CODIGO_AGUJA.search(t)
+    if match and match.group(1) in codes:
+        text = norm(codes[match.group(1)])
+        a["curvatura"] = a["curvatura"] or curvatura_de_descripcion(text)
+        a["punta"] = a["punta"] or punta_de_texto(text)
+        if match.group(2) and a["long_aguja"] is None:
+            a["long_aguja"] = float(match.group(2))
+    match = ABREVIATURA.search(t)
+    if match:
+        a["punta"] = a["punta"] or ABREVIATURAS[match.group(1)]
+        if match.group(2) and a["long_aguja"] is None:
+            a["long_aguja"] = float(match.group(2))
 
 
 def atributos_texto(texto: str) -> dict:
@@ -156,6 +180,12 @@ def atributos_texto(texto: str) -> dict:
         a["curvatura"] = curvatura_de_descripcion(t.replace("AGUJA", ""))
         a["punta"] = punta_de_texto(t)
     a["long_aguja"] = float(old["mm"]) if old["mm"] else None
+    if a["curvatura"] not in SIN_AGUJA:
+        _abreviaturas(a, t)
+    else:
+        a["long_aguja"] = None  # "S/A 8 mm" is a typo for strands; there is no needle
+    if a["calibre"] == "1/0":
+        a["calibre"] = "0"  # USP size 1/0 is size 0
     a["long_hebra"] = float(old["cm"]) if old["cm"] else None
     match = re.search(r"(\d+) HEBRAS", t)
     a["hebras"] = int(match.group(1)) if match else None
