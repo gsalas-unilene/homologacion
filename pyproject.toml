@@ -1,0 +1,24 @@
+[project]
+name = "homologador"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Gerson Salas", email = "gersonsalas@unilene.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "cryptography>=50.0.2",
+    "fastembed>=0.8.1",
+    "fastmcp>=2.0.0",
+    "lancedb>=0.39.0",
+    "polars>=1.44.2",
+    "python-dotenv>=1.2.3",
+]
+
+[project.scripts]
+homologador = "homologador:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
