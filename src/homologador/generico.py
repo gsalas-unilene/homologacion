@@ -46,6 +46,53 @@ def medidas(texto: str) -> set[tuple[str, str]]:
     return result
 
 
+STOPWORDS = set("""DE DEL LA LAS EL LOS PARA CON SIN Y EN POR AL NO UNIDAD UNIDADES UND UNID UN X CAJA PAR PARES
+PIEZA PIEZAS DESCARTABLE DESCARTABLES ESTERIL ESTERILES TALLA TIPO DETERMINACION DETERMINACIONES
+EMPAQUE INDIV USO""".split())
+# Contrastive qualifiers: a candidate is rejected only when both names state a value and the values differ.
+QUALIFIERS = {
+    "lumen": [(r"\b(?:UN|SIMPLE|UNICO|MONO) LUMEN", "1"), (r"\bDOBLE LUMEN", "2"), (r"\bTRIPLE LUMEN", "3"),
+              (r"\bCUATRO LUMEN", "4")],
+    "esteril": [(r"\bNO ESTERIL", "no"), (r"\bESTERIL", "si")],
+    "polvo": [(r"\bSIN POLVO", "sin"), (r"\bCON POLVO", "con")],
+    "reinhalacion": [(r"\bNO REINHAL", "no"), (r"\bREINHAL", "si")],
+}
+
+
+def _palabras(t: str) -> list[str]:
+    """Meaningful words as unique 4-letter prefixes (GUANTE/GUANTES, EXAMEN/EXAMINACION), in order."""
+    seen = []
+    for word in re.findall(r"[A-Z]{3,}", t):
+        if word not in STOPWORDS and word[:4] not in seen:
+            seen.append(word[:4])
+    return seen
+
+
+def _cualificadores(t: str) -> dict:
+    found = {}
+    for key, rules in QUALIFIERS.items():
+        for pattern, value in rules:
+            if re.search(pattern, t):
+                found[key] = value
+                break
+    return found
+
+
+def compatibles(nombre: str, item: str) -> bool:
+    """Head-word and qualifier check: the first meaningful word of the MINSA name must appear in the item,
+    names without numbers must share at least two words, and no contrastive qualifier may differ."""
+    a, b = norm(nombre), norm(item)
+    words, item_words = _palabras(a), set(_palabras(b))
+    if words:
+        # A kit named after its content ("SET DE ... EPIDURAL CON AGUJA") may match an item named by that content.
+        if words[0] not in item_words and (_palabras(b) or [""])[0] not in words:
+            return False
+        if not medidas(nombre) and len(item_words.intersection(words)) < 2:
+            return False
+    qa, qb = _cualificadores(a), _cualificadores(b)
+    return all(qa[key] == qb[key] for key in qa.keys() & qb.keys())
+
+
 def penalidad(a: set, b: set) -> int:
     return len(a ^ b)
 
@@ -57,5 +104,6 @@ def elegir(nombre: str, candidatos: list[dict]) -> list[tuple[int, dict]]:
     """
     wanted = medidas(nombre)
     limit = MAX_DISTANCE_RELAJADO if wanted else MAX_DISTANCE
-    ranked = [(penalidad(wanted, medidas(c["Item"])), c) for c in candidatos if c["_distance"] <= limit]
+    ranked = [(penalidad(wanted, medidas(c["Item"])), c) for c in candidatos
+              if c["_distance"] <= limit and compatibles(nombre, c["Item"])]
     return sorted(ranked, key=lambda pair: (pair[0], pair[1]["_distance"]))
