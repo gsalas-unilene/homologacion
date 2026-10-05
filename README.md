@@ -80,3 +80,25 @@ Suture rows (`NombreMed` starting with `SUTURA` and a recognized material) do no
 | `sin_equivalente` | Suture: no SD/CQ item with that family and calibre. Non-suture: nothing within the distance limit, or the numbers disagree. `Coditem`, `Item` and `Agrupador` are empty. |
 
 Non-suture rows keep the vector strategy: the top 30 candidates among the non-suture own items (sutures are 96% of the catalog and would crowd them out), re-ranked by number+unit agreement, then distance (`src/homologador/generico.py`; thresholds measured on the catalog, see the comment there). Tiers are candidates for human review, not clinical equivalence; `exacto` does not compare sterility class, box size or brand variants beyond the listed attributes.
+
+## SIGA codes (best match per MINSA row)
+
+The 1085 homologated rows (every non-`sin_equivalente` row plus all suture rows) were searched in the SIGA catalog (CBSO search box); the raw results are kept, git-ignored, in `salida/` (`queries.json`, `siga_raw.json` for the first pass, `siga_raw2.json` for the search variants). SIGA lists results by code, not by relevance, and words its descriptions differently (NAILON for NYLON, `C/DOBLE AGUJA` for `C/2A`), so the best option is chosen by attributes (`src/homologador/siga.py`), never by position.
+
+```sh
+uv run --with openpyxl python siga_excel.py   # writes salida/homologacion_siga_final.xlsx
+```
+
+`openpyxl` is used only by that script and is not a project dependency, hence `--with`. The matching code in `siga.py` needs nothing beyond the project's own packages and is covered by the normal unit tests (the Excel writer test is skipped when openpyxl is absent).
+
+The sheet `homologacion_siga` has the 13 columns of `homologacion.csv` plus `SIGA_estado`, `SIGA_puntaje` (0-100; 100 only for equal text), `SIGA_codigo_1`, `SIGA_descripcion_1`, `SIGA_diferencias` (MINSA!=SIGA per attribute for the main option, `?` = not stated), `SIGA_codigo_2` to `SIGA_codigo_5` (next best options), `SIGA_alternativas` (`code: description | ...` for options 2 to 5) and `SIGA_total_opciones` (all distinct codes found).
+
+| `SIGA_estado` | Meaning |
+|---|---|
+| `exacto` | One option whose normalized description equals the MINSA one (accents, case, `Nº`/`N°`/`NO`, inch marks, parenthesized notes and a trailing `UNIDAD` are ignored). |
+| `mejor_coincidencia` | The top option agrees on every core attribute (suture: material family, calibre, curvature, point, single/double needle and color/construction; other products: same numbers and units, head word, qualifiers, at least 75% of the MINSA words) and is strictly better than the rest; nearest needle and thread lengths win, differences are listed. |
+| `aproximado` | The best option differs, or lacks, a core attribute (another calibre, point, double vs single needle, other words...). Never a different material or calibre without this estado. Review before use. |
+| `ambiguo` | Two or more options tied at the top (for example the same text under two codes, or the MINSA name does not state the thread length); all are listed. |
+| `sin_resultado` | SIGA returned nothing for any search variant. |
+
+Scores and estados are candidates for human review, not clinical equivalence.
