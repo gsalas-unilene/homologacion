@@ -24,6 +24,11 @@ class MedidasTest(unittest.TestCase):
         self.assertEqual(medidas(CATETER_5FR), {("5.5", "FR"), ("13", "CM")})
         self.assertEqual(medidas("ACICLOVIR 3% UNG. OFT. X 3.5 GR"), {("3", "%"), ("3.5", "G")})
 
+    def test_numbered_sizes_are_tokens(self):
+        self.assertEqual(medidas("HOJA DE BISTURI DESCARTABLE Nº 12   UNIDAD"), {("12", "N")})
+        self.assertEqual(medidas("SONDA NASOGASTRICA N° 10   UNIDAD"), {("10", "N")})
+        self.assertGreater(penalidad(medidas("HOJA DE BISTURI Nº 12"), medidas("HOJA DE BISTURI Nº 11 - UNIDADES")), 0)
+
     def test_words_starting_like_units_are_not_units(self):
         self.assertEqual(medidas("CATETER TRIPLE 2 LUMEN"), set())
 

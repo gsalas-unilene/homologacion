@@ -58,3 +58,22 @@ The guidance file `homologacion_guia.json` has schema version 1, optional `alias
 | `unavailable` | Catalog storage or local guidance could not be read. |
 
 Embedding affects preparation only: MCP lookups never load an embedder. The MCP server requires a successfully published active index; guidance can be read independently of that index.
+
+## Bulk homologation (MINSA to own products)
+
+`homologar.py` proposes, for every MINSA row, the best own product from the active catalog and writes `salida/homologacion.csv` (git-ignored, UTF-8 with BOM so Excel opens it). It reads the stored vectors directly from LanceDB: no embedder, no MCP call, no `.env`.
+
+```sh
+uv run python homologar.py            # all MINSA rows (about 15 minutes for 23005 rows)
+uv run python homologar.py --limit 200   # sample the first 200 rows
+```
+
+Columns: `CodigoMed`, `NombreMed`, `Coditem`, `Item`, `Agrupador`, `tier`, `distance` (L2), `score`, `alt_2`, `alt_3` (next candidates, `Coditem`). The summary printed at the end counts rows per tier.
+
+| Tier | Meaning |
+|---|---|
+| `exacto` | Suture whose material, gauge, needle curvature and needle type (or material, gauge and length for needle-less sutures) all equal the candidate's. Accepted at any distance. |
+| `revisar` | Suture of the same material with another attribute, or a non-suture whose number+unit tokens (`10 MM`, `2.5 ML`, `5 FR`, `N 12`) agree with the candidate; in both cases L2 distance is at most 0.35. |
+| `sin_equivalente` | Nothing within 0.35, or the numbers disagree. `Coditem`, `Item` and `Agrupador` are empty; `distance` is the nearest vector. |
+
+How it works: the top 30 vector candidates are re-ranked. Sutures (`NombreMed` starting with `SUTURA`) by parsed attributes (`src/homologador/atributos.py`); the rest by number+unit agreement, then distance (`src/homologador/generico.py`). The 0.35 threshold was measured on the catalog (see the comment in `generico.py`). Tiers are candidates for human review: they are not clinical equivalence, and `exacto` does not compare brand, color or sterilization.

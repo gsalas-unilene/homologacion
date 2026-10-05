@@ -39,7 +39,7 @@ WEIGHTS = {"mat": 4, "gauge": 3, "curv": 1, "type": 1, "mm": 1, "cm": 1, "needle
 
 def norm(text: str) -> str:
     """Upper-case, strip accents, collapse whitespace; U+FFFD (broken accent or degree sign) becomes a degree sign."""
-    text = unicodedata.normalize("NFD", text.upper().replace("�", "°").replace("º", "°"))
+    text = unicodedata.normalize("NFD", text.upper().replace("\ufffd", "\u00b0").replace("\u00ba", "\u00b0"))
     text = "".join(char for char in text if unicodedata.category(char) != "Mn")
     return re.sub(r"\s+", " ", text).strip()
 

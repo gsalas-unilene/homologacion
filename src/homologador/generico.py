@@ -20,14 +20,18 @@ TOKEN = re.compile(
 )
 
 
+SIZE = re.compile(r"\bN[°O]? ?(\d+(?:[.,]\d+)?)\b")  # "N-degree 12", "NO 12": blade, catheter, probe sizes
+
+
 def _number(value: str) -> str:
     return f"{float(value.replace(',', '.')):g}"
 
 
 def medidas(texto: str) -> set[tuple[str, str]]:
     """Set of (number, unit) tokens, e.g. {('10', 'MM'), ('2.5', 'ML')}."""
-    result = set()
-    for numbers, unit in TOKEN.findall(norm(texto)):
+    t = norm(texto)
+    result = {(_number(number), "N") for number in SIZE.findall(t)}
+    for numbers, unit in TOKEN.findall(t):
         result.update((_number(number), UNITS[unit]) for number in numbers.split("/"))
     return result
 
