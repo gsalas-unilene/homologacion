@@ -44,7 +44,7 @@ SIN_AGUJA = ("sin aguja", "multiempaque", "carrete")
 CURVATURES = r"(1/8|1/4|3/8|1/2|5/8)"
 # Needle point keywords, first match wins (specific before generic).
 PUNTAS = [
-    (r"REVERS[EO] (?:CORTANTE|CUTTING)|CUTTING REVERS", "reverso cortante"),
+    (r"REVERS[EO] (?:CORTANTE|CUTTING)|CUTTING REVERS|CORTE INVERTIDO", "reverso cortante"),
     (r"ESPATULA|SPATULA", "espatulada"),
     (r"TAPERCUT", "tapercut"),
     (r"TAPERPOINT|TAPER POINT", "taper"),

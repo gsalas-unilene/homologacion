@@ -34,13 +34,13 @@ MATERIALS = [
 ]
 CURVATURE = r"(?<!\d)(1/2|3/8|5/8|1/4)(?!\d)"
 NO_NEEDLE = r"\bS/A|SIN AGUJA|MULTIEMPAQUE|CARRETE"
-DOUBLE_NEEDLE = r"\bC/(?:2|DOBLE|CUATRO|4) ?A"
+DOUBLE_NEEDLE = r"\bC/(?:2|DOBLE|CUATRO|4) ?A|\b2 ?C/A"
 WEIGHTS = {"mat": 4, "gauge": 3, "curv": 1, "type": 1, "mm": 1, "cm": 1, "needles": 1}
 
 
 def norm(text: str) -> str:
     """Upper-case, strip accents, collapse whitespace; U+FFFD (broken accent or degree sign) becomes a degree sign."""
-    text = unicodedata.normalize("NFD", text.upper().replace("\ufffd", "\u00b0").replace("\u00ba", "\u00b0"))
+    text = unicodedata.normalize("NFD", text.upper().replace("\ufffd", "\u00b0").replace("\u00ba", "\u00b0").replace("\u00bd", "1/2"))
     text = "".join(char for char in text if unicodedata.category(char) != "Mn")
     return re.sub(r"\s+", " ", text).strip()
 

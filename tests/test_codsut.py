@@ -162,6 +162,9 @@ class AtributosTextoTest(unittest.TestCase):
         self.assertEqual(self.campos("SUTURA ACIDO POLIGLACTIN 7/0 C/A ESPATULA 3/8 CIRCULAR X 6.5 mm X 45 cm", "curvatura", "punta", "long_aguja"),
                          ("3/8", "espatulada", 6.5))
 
+    def test_siga_wording_inverted_cut_is_reverse_cutting(self):
+        self.assertEqual(self.campos("SUTURA SEDA NEGRA TRENZADA 4/0 C/A 3/8 CORTE INVERTIDO 20 mm X 75 cm", "curvatura", "punta"), ("3/8", "reverso cortante"))
+
     def test_barbed_suture_has_no_family_but_keeps_its_attributes(self):
         a = atributos_texto("SUTURA CON PUAS UNIDIRECCIONAL MONOFILAMENTO VIOLETA 3/0 C/A 1/2 CIRCULO PUNTA CILINDRICA 26 mm X 30 cm   UNIDAD")
         self.assertEqual((a["familia"], a["calibre"], a["curvatura"], a["punta"], a["long_aguja"], a["long_hebra"]),

@@ -106,6 +106,10 @@ class ParseTest(unittest.TestCase):
         text = "SUTURA CON PUAS UNIDIRECCIONAL MONOFILAMENTO VERDE 0 C/A 1/2 CIRCULO PUNTA CILINDRICA 37 mm X 30 cm"
         self.assertEqual(fields(text, "gauge", "type"), ("0", "CILINDRICA"))
 
+    def test_vulgar_fraction_sign_and_leading_two_needle_marker(self):
+        self.assertEqual(fields("SUTURA CON PUAS UNIDIRECCIONAL MONOFILAMENTO VIOLETA 2/0 C/A ½ CIRCULO PUNTA REDONDA 27 mm X 25 cm", "curv"), ("1/2",))
+        self.assertEqual(fields("SUTURA DE POLIPROPILENO 6/0 2C/A 3/8 CIRCULO REDONDA 13 mm x 75 cm   UNIDAD", "mat", "needles"), ("POLIPROPILENO", 2))
+
     def test_unparseable_text_yields_none(self):
         attrs = parse("VACUNA CONTRA LA HEPATITIS A 720 UI/0.5 mL 1 DOSIS INYECTABLE")
         self.assertIsNone(attrs["mat"])

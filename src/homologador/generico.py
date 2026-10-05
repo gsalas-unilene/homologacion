@@ -26,9 +26,14 @@ TOKEN = re.compile(
 )
 
 
-SIZE = re.compile(r"\bN[°O]? ?(\d+(?:[.,]\d+)?)\b(?! ?(?:G|FR|F|MM|CM|ML)\b)")  # "N-degree 12", "NO 12": blade, probe sizes; "N-degree 23 G" is a gauge
+SIZE = re.compile(r"\bN[°O]? ?(\d+(?:[.,]\d+)?(?: \d/\d)?)\b(?! ?(?:G|FR|F|MM|CM|ML)\b)")  # "N-degree 12", "NO 12": blade, probe sizes; "N-degree 23 G" is a gauge
 TALLA = re.compile(r'(?:TALLA|ESTERIL) "?(XXL|XL|XS|S|M|L)"?(?![A-Z0-9])')  # "TALLA S", "NO ESTERIL S CP" (gloves, gowns)
 INCH = re.compile(r"""(?<![\d/])(\d+ \d+/\d+|\d+/\d+|\d+(?:[.,]\d+)?) ?(?:IN\b|"|'')""")  # 5/16 in, 1 1/2", 3 1/2''; never converted to mm
+
+
+def _numero_talla(value: str) -> str:
+    whole, _, fraction = value.partition(" ")
+    return _number(whole) + ("-" + fraction if fraction else "")
 
 
 def _number(value: str) -> str:
@@ -38,7 +43,7 @@ def _number(value: str) -> str:
 def medidas(texto: str) -> set[tuple[str, str]]:
     """Set of (number, unit) tokens, e.g. {('10', 'MM'), ('2.5', 'ML')}."""
     t = norm(texto)
-    result = {(_number(number), "N") for number in SIZE.findall(t)}
+    result = {(_numero_talla(number), "N") for number in SIZE.findall(t)}
     result.update((size, "TALLA") for size in TALLA.findall(t))
     result.update((inch.replace(" ", "-").replace(",", "."), "IN") for inch in INCH.findall(t))
     for numbers, unit in TOKEN.findall(t):

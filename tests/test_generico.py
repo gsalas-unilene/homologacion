@@ -34,6 +34,10 @@ class MedidasTest(unittest.TestCase):
         self.assertEqual(medidas("GUANTES DE LATEX DE EXAMINACION NO ESTERIL S CP UNIDADES"), {("S", "TALLA")})
         self.assertEqual(medidas("MANDIL DESCARTABLE TALLA \"XL\" 45GR/M2 ASEPTICO"), {("XL", "TALLA"), ("45", "G")} )
 
+    def test_half_sizes_are_distinct_from_whole_sizes(self):
+        self.assertEqual(medidas("GUANTE QUIRURGICO ESTERIL EMPAQUE INDIV. Nº 7 1/2 PUÑO LARGO   PAR"), {("7-1/2", "N")})
+        self.assertEqual(medidas("GUANTE QUIRURGICO ESTERIL EMPAQUE INDIV. Nº 7 PUÑO LARGO"), {("7", "N")})
+
     def test_gauge_number_is_not_also_a_size(self):
         self.assertEqual(medidas("AGUJA HIPODERMICA DESCARTABLE N° 23 G X 1/2\"   UNIDAD"), {("23", "G"), ("1/2", "IN")})
         self.assertEqual(medidas("SONDA DE ASPIRACION N° 10 F   UNIDAD"), {("10", "FR")})
