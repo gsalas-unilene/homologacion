@@ -71,8 +71,14 @@ class HomologarTest(unittest.TestCase):
             root = Path(directory)
             create_catalog(root / "db")
             salida = root / "salida" / "homologacion.csv"
+            items_csv = root / "items.csv"
+            with items_csv.open("w", encoding="utf-8-sig", newline="") as stream:
+                writer = csv.DictWriter(stream, ["Coditem", "CodSut", "Item", "Agrupador"])
+                writer.writeheader()
+                writer.writerow({"Coditem": "PSTSN02412", "CodSut": "SDST030TC25007512ASCE", "Agrupador": "01. SUTURAS",
+                                 "Item": "SEDA NEGRA TRENZADA 3/0 AGUJA 3/8 CÍRCULO CORTANTE 25 MM X 75 CM SD"})
             with patch.object(mcp_server, "DB_PATH", root / "db"):
-                counts = homologar.homologar(salida, **kwargs)
+                counts = homologar.homologar(salida, items_csv=items_csv, **kwargs)
             raw = salida.read_bytes()
             with salida.open(encoding="utf-8-sig", newline="") as stream:
                 return counts, raw, list(csv.DictReader(stream))
@@ -81,12 +87,19 @@ class HomologarTest(unittest.TestCase):
         counts, raw, rows = self.run_catalog()
         self.assertTrue(raw.startswith(b"\xef\xbb\xbf"))
         self.assertEqual(list(rows[0]), ["CodigoMed", "NombreMed", "Coditem", "Item", "Agrupador", "tier",
-                                         "distance", "score", "alt_2", "alt_3"])
+                                         "distance", "score", "alt_2", "alt_3", "marca", "CodSut", "diferencias"])
         by_code = {r["CodigoMed"]: r for r in rows}
         self.assertEqual({k: (v["tier"], v["Coditem"]) for k, v in by_code.items()},
-                         {"00001": ("probable", "S1"), "00002": ("revisar", "C1"),
+                         {"00001": ("exacto", "PSTSN02412"), "00002": ("revisar", "C1"),
                           "00003": ("sin_equivalente", ""), "00004": ("sin_equivalente", "")})
-        self.assertEqual(counts, Counter(probable=1, revisar=1, sin_equivalente=2))
+        self.assertEqual(counts, Counter(exacto=1, revisar=1, sin_equivalente=2))
+
+    def test_suture_rows_get_brand_and_codsut_and_generic_rows_leave_them_empty(self):
+        _, _, rows = self.run_catalog()
+        by_code = {r["CodigoMed"]: r for r in rows}
+        self.assertEqual((by_code["00001"]["marca"], by_code["00001"]["CodSut"], by_code["00001"]["distance"]),
+                         ("SD", "SDST030TC25007512ASCE", ""))
+        self.assertEqual((by_code["00002"]["marca"], by_code["00002"]["CodSut"], by_code["00002"]["diferencias"]), ("", "", ""))
 
     def test_limit_processes_only_the_first_rows(self):
         counts, _, rows = self.run_catalog(limit=2)

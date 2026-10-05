@@ -13,15 +13,18 @@ from pathlib import Path
 
 import mcp_server  # also keeps FastMCP from reading any .env file
 from homologador.clasificar import COLUMNS, clasificar, es_sutura
+from homologador.suturas import cargar_indice
 
+ITEMS_CSV = Path(__file__).resolve().parent / "items" / "items.csv"
 SALIDA = Path(__file__).resolve().parent / "salida" / "homologacion.csv"
 BATCH = 500
 TOP = 30
 NO_SUTURAS = f"Agrupador != {mcp_server._sql_string('01. SUTURAS')}"
-TIERS = ("probable", "revisar", "sin_equivalente")
+TIERS = ("exacto", "probable", "revisar", "sin_equivalente")
 
 
-def homologar(salida: Path = SALIDA, limit: int | None = None) -> Counter:
+def homologar(salida: Path = SALIDA, limit: int | None = None, items_csv: Path = ITEMS_CSV) -> Counter:
+    indice = cargar_indice(items_csv)  # SD/CQ suture items by CodSut (the LanceDB items table has no CodSut)
     manifest, items, minsa = mcp_server._open_catalog()
     total = minsa.count_rows() if limit is None else min(limit, minsa.count_rows())
     fields = list(mcp_server.MINSA_FIELDS + mcp_server.METADATA_FIELDS + ("vector",))
@@ -35,14 +38,15 @@ def homologar(salida: Path = SALIDA, limit: int | None = None) -> Counter:
             rows = minsa.search().select(fields).limit(min(BATCH, total - offset)).offset(offset).to_list()
             for row in rows:
                 mcp_server._validate_row_metadata(row, manifest)
-                vector = mcp_server._vector(row, manifest["embedding_dimension"])
-                query = items.search(vector, vector_column_name="vector", query_type="vector")
+                candidates = []
                 if not es_sutura(row["NombreMed"]):
                     # 21832 of 22668 own items are sutures and crowd the top-30; search the rest only.
-                    query = query.where(NO_SUTURAS)
-                candidates = query.select(item_fields).limit(TOP).to_list()
-                result = clasificar(row["NombreMed"], candidates)
-                result["distance"] = round(result["distance"], 4)
+                    vector = mcp_server._vector(row, manifest["embedding_dimension"])
+                    query = items.search(vector, vector_column_name="vector", query_type="vector")
+                    candidates = query.where(NO_SUTURAS).select(item_fields).limit(TOP).to_list()
+                result = clasificar(row["NombreMed"], candidates, indice)
+                if result["distance"] != "":
+                    result["distance"] = round(result["distance"], 4)
                 writer.writerow({"CodigoMed": row["CodigoMed"], "NombreMed": row["NombreMed"], **result})
                 counts[result["tier"]] += 1
     return counts

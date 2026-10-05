@@ -1,9 +1,11 @@
 """Tier a MINSA row from its top vector candidates (candidates for human review, not clinical equivalence)."""
 
-from homologador.atributos import core_exact, parse, parse_item, score
-from homologador.generico import MAX_DISTANCE, elegir
+from homologador.atributos import parse
+from homologador.generico import elegir
+from homologador.suturas import emparejar
 
-COLUMNS = ["CodigoMed", "NombreMed", "Coditem", "Item", "Agrupador", "tier", "distance", "score", "alt_2", "alt_3"]
+COLUMNS = ["CodigoMed", "NombreMed", "Coditem", "Item", "Agrupador", "tier", "distance", "score", "alt_2", "alt_3",
+           "marca", "CodSut", "diferencias"]
 
 
 def _result(tier, best, distance, points, alternatives):
@@ -25,26 +27,12 @@ def es_sutura(nombre: str) -> bool:
     return nombre.startswith("SUTURA") and parse(nombre)["mat"] is not None
 
 
-def clasificar(nombre: str, candidatos: list[dict]) -> dict:
-    """``candidatos``: vector neighbours (Coditem, Item, Agrupador, _distance), nearest first."""
+def clasificar(nombre: str, candidatos: list[dict], indice: dict | None = None) -> dict:
+    """Suture rows are matched on the SD/CQ structured ``indice``; other rows on ``candidatos``
+    (vector neighbours with Coditem, Item, Agrupador, _distance, nearest first)."""
     if es_sutura(nombre):
-        return _sutura(parse(nombre), candidatos)
+        return emparejar(nombre, indice)
     return _generico(nombre, candidatos)
-
-
-def _sutura(wanted: dict, candidatos: list[dict]) -> dict:
-    ranked = sorted(
-        ((score(wanted, parse_item(c["Item"])), parse_item(c["Item"]), c) for c in candidatos),
-        key=lambda t: (-t[0], t[2]["_distance"]),
-    )
-    points, attrs, best = ranked[0]
-    alternatives = [c for _, _, c in ranked[1:]]
-    # An attribute-exact match is accepted at any distance: the attributes, not the embedding, vouch for it.
-    if core_exact(wanted, attrs):
-        return _result("probable", best, best["_distance"], points, alternatives)
-    if attrs["mat"] == wanted["mat"] and best["_distance"] <= MAX_DISTANCE:
-        return _result("revisar", best, best["_distance"], points, alternatives)
-    return _result("sin_equivalente", None, best["_distance"], points, [])
 
 
 def _generico(nombre: str, candidatos: list[dict]) -> dict:
