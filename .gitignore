@@ -8,3 +8,4 @@ __pycache__/
 .codegraph/
 datos_medicos_db/
 salida/
+.playwright-mcp/
