@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Gerson Salas", email = "gersonsalas@unilene.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "cryptography>=50.0.2",
     "fastembed>=0.8.1",
