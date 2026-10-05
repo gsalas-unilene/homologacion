@@ -25,7 +25,7 @@ New CSV columns: `marca`, `CodSut`, `diferencias` (e.g. `long_aguja:15!=35mm; va
 - [x] S2 — `src/homologador/codsut.py`: parse a CodSut into attributes using the dictionaries, graceful on unknown codes. Route: delegated writer.
 - [x] S3 — Structured suture matching, brand filter, tiers, new columns, README. Route: delegated writer.
 - [x] S4 — Extend the MINSA suture text parser from the dictionaries; measure unparsed rows and tier counts before/after. Route: delegated writer.
-- [ ] S5 — Supervised full run, spot check 30 rows per tier, record counts. Route: parent.
+- [x] S5 — Supervised full run, spot check 30 rows per tier, record counts. Route: parent.
 
 ## Evidence and limitations
 - S1 (cd057b3): `convertir_estructura.py` writes `items/codsut_estructura.json` (marca 42, hebra 49, calibre 29, aguja 65, long_aguja 151, long_hebra 158, caja 9, clase 5, campo_variable 67); the xlsx and json are committed, runtime reads only the json (openpyxl only via `uv run --with openpyxl`).
@@ -35,3 +35,8 @@ New CSV columns: `marca`, `CodSut`, `diferencias` (e.g. `long_aguja:15!=35mm; va
 - Tier counts over the 998 SUTURA rows (structured match, scratch script, not the full pipeline): exacto 717, probable 234, revisar 26, sin_equivalente 21. The 21 sin_equivalente: 7 barbed (no family; the real pipeline routes them to the generic strategy), 4 adhesive (no calibre), 10 family+calibre absent from SD/CQ (polyethylene 0 x2, polyglyconate 3/0 x2, steel 2/0 x2 and 1 each of PGLA 4, PGA 4, PGA 3, steel 2).
 - Checks: `FASTMCP_ENV_FILE=NUL uv run python -m unittest discover -s tests`: 121 tests OK. `homologar.py --limit 300` could not write `salida/homologacion.csv` (PermissionError: the file is locked by another process); `homologar.homologar(Path('salida/prueba_s4.csv'), limit=1500)` ran end to end with the 13 columns: exacto 49, probable 11, revisar 6, sin_equivalente 1434 (the first 1500 MINSA rows are mostly non-suture).
 - Limitations: S5 (full run, spot check) is the parent's. Variant matching is by tags from the text and from the hebra code; nylon/silk colors compare only when both sides state one. Barbed sutures cannot be matched because the MINSA name does not state the material.
+
+## S5 full run (2026-10-05)
+- 121 tests OK. Full run (23005 rows): exacto 717, probable 234, revisar 113, sin_equivalente 21941. Suture rows (998): exacto 717, probable 234, revisar 26, sin_equivalente 21; every suture match is brand SD (937) or CQ (40). Non-suture revisar unchanged (87).
+- Spot check (30 exacto, 30 probable, 26 revisar, by eye): exacto rows agree with the CodSut on material, calibre, curvature, point, lengths and single/double needle. Probable rows differ in lengths (needle 1-5 mm, thread 5-25 cm) or variant wording.
+- Limitations: 56 of 234 probable rows have empty `diferencias` because the MINSA name omits a length (unknown, not mismatch); some `variante` differences are only wording (`negro` vs `negro,trenzado`); sterility class is not compared; `salida/homologacion.csv` had to be closed in Excel before the CLI could overwrite it.
