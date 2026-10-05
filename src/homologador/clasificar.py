@@ -20,11 +20,15 @@ def _result(tier, best, distance, points, alternatives):
     }
 
 
+def es_sutura(nombre: str) -> bool:
+    """Suture path: named SUTURA with a recognized material. Everything else is searched among non-suture items."""
+    return nombre.startswith("SUTURA") and parse(nombre)["mat"] is not None
+
+
 def clasificar(nombre: str, candidatos: list[dict]) -> dict:
     """``candidatos``: vector neighbours (Coditem, Item, Agrupador, _distance), nearest first."""
-    wanted = parse(nombre)
-    if nombre.startswith("SUTURA") and wanted["mat"]:
-        return _sutura(wanted, candidatos)
+    if es_sutura(nombre):
+        return _sutura(parse(nombre), candidatos)
     return _generico(nombre, candidatos)
 
 
@@ -37,7 +41,7 @@ def _sutura(wanted: dict, candidatos: list[dict]) -> dict:
     alternatives = [c for _, _, c in ranked[1:]]
     # An attribute-exact match is accepted at any distance: the attributes, not the embedding, vouch for it.
     if core_exact(wanted, attrs):
-        return _result("exacto", best, best["_distance"], points, alternatives)
+        return _result("probable", best, best["_distance"], points, alternatives)
     if attrs["mat"] == wanted["mat"] and best["_distance"] <= MAX_DISTANCE:
         return _result("revisar", best, best["_distance"], points, alternatives)
     return _result("sin_equivalente", None, best["_distance"], points, [])

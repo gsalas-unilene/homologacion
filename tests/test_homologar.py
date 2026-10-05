@@ -30,7 +30,9 @@ CATETER = "CATETER VENOSO CENTRAL 4 FR X 13 cm   UNIDAD"
 VACUNA = "VACUNA CONTRA LA HEPATITIS A 720 UI/0.5 mL 1 DOSIS INYECTABLE"
 ITEMS = [
     ("S1", "SEDA NEGRA TRENZADA 3/0 AGUJA 3/8 CÍRCULO CORTANTE 25 MM X 75 CM CP", "01. SUTURAS", [1.0, 0.0]),
-    ("C1", "CATETER VENOSO CENTRAL SIMPLE LUMEN 4 FR X 13 CM. X UN. CP", "13. OTROS", [0.0, 1.0]),
+    ("C1", "CATETER VENOSO CENTRAL SIMPLE LUMEN 4 FR X 13 CM. X UN. CP", "13. OTROS", [0.1, 0.995]),
+    # Decoy: closer to the catheter row than C1, but a suture item; non-suture rows must not see it.
+    ("D1", "CATETER VENOSO CENTRAL 4 FR X 13 CM", "01. SUTURAS", [0.0, 1.0]),
 ]
 MINSA = [("00001", SEDA, [1.0, 0.0]), ("00002", CATETER, [0.0, 1.0]), ("00003", VACUNA, [0.7071, 0.7071]),
          ("00004", "TORNILLO PARA HUESO 4.0 mm", [0.6, 0.8])]
@@ -82,9 +84,9 @@ class HomologarTest(unittest.TestCase):
                                          "distance", "score", "alt_2", "alt_3"])
         by_code = {r["CodigoMed"]: r for r in rows}
         self.assertEqual({k: (v["tier"], v["Coditem"]) for k, v in by_code.items()},
-                         {"00001": ("exacto", "S1"), "00002": ("revisar", "C1"),
+                         {"00001": ("probable", "S1"), "00002": ("revisar", "C1"),
                           "00003": ("sin_equivalente", ""), "00004": ("sin_equivalente", "")})
-        self.assertEqual(counts, Counter(exacto=1, revisar=1, sin_equivalente=2))
+        self.assertEqual(counts, Counter(probable=1, revisar=1, sin_equivalente=2))
 
     def test_limit_processes_only_the_first_rows(self):
         counts, _, rows = self.run_catalog(limit=2)

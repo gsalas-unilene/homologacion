@@ -12,12 +12,13 @@ from collections import Counter
 from pathlib import Path
 
 import mcp_server  # also keeps FastMCP from reading any .env file
-from homologador.clasificar import COLUMNS, clasificar
+from homologador.clasificar import COLUMNS, clasificar, es_sutura
 
 SALIDA = Path(__file__).resolve().parent / "salida" / "homologacion.csv"
 BATCH = 500
 TOP = 30
-TIERS = ("exacto", "revisar", "sin_equivalente")
+NO_SUTURAS = f"Agrupador != {mcp_server._sql_string('01. SUTURAS')}"
+TIERS = ("probable", "revisar", "sin_equivalente")
 
 
 def homologar(salida: Path = SALIDA, limit: int | None = None) -> Counter:
@@ -35,12 +36,11 @@ def homologar(salida: Path = SALIDA, limit: int | None = None) -> Counter:
             for row in rows:
                 mcp_server._validate_row_metadata(row, manifest)
                 vector = mcp_server._vector(row, manifest["embedding_dimension"])
-                candidates = (
-                    items.search(vector, vector_column_name="vector", query_type="vector")
-                    .select(item_fields)
-                    .limit(TOP)
-                    .to_list()
-                )
+                query = items.search(vector, vector_column_name="vector", query_type="vector")
+                if not es_sutura(row["NombreMed"]):
+                    # 21832 of 22668 own items are sutures and crowd the top-30; search the rest only.
+                    query = query.where(NO_SUTURAS)
+                candidates = query.select(item_fields).limit(TOP).to_list()
                 result = clasificar(row["NombreMed"], candidates)
                 result["distance"] = round(result["distance"], 4)
                 writer.writerow({"CodigoMed": row["CodigoMed"], "NombreMed": row["NombreMed"], **result})

@@ -1,6 +1,6 @@
 import unittest
 
-from homologador.clasificar import clasificar
+from homologador.clasificar import clasificar, es_sutura
 from homologador.generico import MAX_DISTANCE
 
 SEDA = "SUTURA SEDA NEGRA TRENZADA 3/0 C/A 3/8 CIRCULO CORTANTE 25 mm X 75 cm   UNIDAD"
@@ -18,17 +18,17 @@ NYLON_3_0 = candidato("A4", "NYLON NEGRO MONOFILAMENTO 3/0 AGUJA 3/8 CÍRCULO CO
 
 
 class SutureTierTest(unittest.TestCase):
-    def test_exact_attributes_win_over_closer_vector_and_list_alternatives(self):
+    def test_probable_attributes_win_over_closer_vector_and_list_alternatives(self):
         result = clasificar(SEDA, [SEDA_2_0, NYLON_3_0, SEDA_3_0, SEDA_3_0_REDONDA])
-        self.assertEqual(result["tier"], "exacto")
+        self.assertEqual(result["tier"], "probable")
         self.assertEqual((result["Coditem"], result["Agrupador"]), ("A2", "01. SUTURAS"))
         self.assertEqual(result["distance"], 0.25)
         self.assertGreater(result["score"], 0)
         self.assertEqual((result["alt_2"], result["alt_3"]), ("A3", "A1"))
 
-    def test_exact_is_kept_beyond_the_distance_threshold(self):
+    def test_probable_is_kept_beyond_the_distance_threshold(self):
         far = dict(SEDA_3_0, _distance=MAX_DISTANCE + 0.05)
-        self.assertEqual(clasificar(SEDA, [far])["tier"], "exacto")
+        self.assertEqual(clasificar(SEDA, [far])["tier"], "probable")
 
     def test_same_family_with_different_attribute_is_review(self):
         result = clasificar(SEDA, [SEDA_2_0, NYLON_3_0, SEDA_3_0_REDONDA])
@@ -43,6 +43,13 @@ class SutureTierTest(unittest.TestCase):
     def test_review_candidate_beyond_threshold_is_no_equivalent(self):
         far = dict(SEDA_2_0, _distance=MAX_DISTANCE + 0.05)
         self.assertEqual(clasificar(SEDA, [far])["tier"], "sin_equivalente")
+
+
+class RoutingTest(unittest.TestCase):
+    def test_only_named_sutures_with_material_take_the_suture_path(self):
+        self.assertTrue(es_sutura(SEDA))
+        self.assertFalse(es_sutura(CATETER))
+        self.assertFalse(es_sutura("SUTURA CON PUAS UNIDIRECCIONAL MONOFILAMENTO VERDE 0 C/A 1/2 CIRCULO"))
 
 
 class GenericTierTest(unittest.TestCase):
